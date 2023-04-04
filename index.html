@@ -1,39 +1,67 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Chat App</title>
-</head>
-<body>
-  <ul id="messages"></ul>
-  <form id="chat-form">
-    <input type="text" id="chat-input" autocomplete="off">
-    <button type="submit">Send</button>
-  </form>
+  <head>
+    <title>Stock Trading Indicator</title>
+  </head>
+  <body>
+    <h1>Stock Trading Indicator</h1>
+    <p>Select a share:</p>
+    <select id="shareSelect" onchange="getIndicator()">
+      <option value="">Select a share</option>
+      <option value="SBIN">SBIN</option>
+      <option value="TATAMOTORS">TATAMOTORS</option>
+      <option value="JINDALSTEL">JINDALSTEL</option>
+      <option value="MANAPPURAM">MANAPPURAM</option>
+      <option value="TATASTEEL">TATASTEEL</option>
+    </select>
+    <p id="indicator"></p>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    // Connect to the socket.io server
-    const socket = io();
-
-    // Handle form submission events
-    const chatForm = document.getElementById('chat-form');
-    chatForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      const messageInput = document.getElementById('chat-input');
-      const message = messageInput.value.trim();
-      if (message !== '') {
-        socket.emit('chat message', message);
+    <script src="https://cdn.jsdelivr.net/npm/stock-candlestick-js@1.0.2/dist/stock-candlestick.min.js"></script>
+    <script>
+      function getIndicator() {
+        const share = document.getElementById("shareSelect").value;
+        if (share) {
+          const apiURL = `https://api.example.com/candlesticks/${share}`;
+          fetch(apiURL)
+            .then((response) => response.json())
+            .then((data) => {
+              const latestCandle = data.candles[data.candles.length - 1];
+              const pattern = getCandlestickPattern(latestCandle);
+              const indicatorBox = document.getElementById("indicator");
+              if (pattern === "Bullish Engulfing" || pattern === "Hammer") {
+                indicatorBox.textContent = "Buy";
+                indicatorBox.style.color = "green";
+              } else if (pattern === "Bearish Engulfing" || pattern === "Shooting Star") {
+                indicatorBox.textContent = "Sell";
+                indicatorBox.style.color = "red";
+              } else {
+                indicatorBox.textContent = "Neutral";
+                indicatorBox.style.color = "gray";
+              }
+            })
+            .catch((error) => console.log(error));
+        }
       }
-      messageInput.value = '';
-    });
 
-    // Handle incoming chat messages
-    const messagesList = document.getElementById('messages');
-    socket.on('chat message', (msg) => {
-      const messageItem = document.createElement('li');
-      messageItem.textContent = msg;
-      messagesList.appendChild(messageItem);
-    });
-  </script>
-</body>
+      function getCandlestickPattern(candle) {
+        const { open, close, high, low } = candle;
+        const bodyHeight = Math.abs(close - open);
+        const bodyTop = Math.min(close, open);
+        const bodyBottom = Math.max(close, open);
+        const upperShadow = high - bodyTop;
+        const lowerShadow = bodyBottom - low;
+        if (close > open && bodyHeight >= 0.6 * (high - low) && upperShadow <= 0.2 * bodyHeight && lowerShadow >= 2 * bodyHeight) {
+          return "Hammer";
+        } else if (open > close && bodyHeight >= 0.6 * (high - low) && lowerShadow <= 0.2 * bodyHeight && upperShadow >= 2 * bodyHeight) {
+          return "Shooting Star";
+        } else if (close > open && bodyHeight >= 0.8 * (high - low) && bodyTop === low) {
+          return "Bullish Engulfing";
+        } else if (open > close && bodyHeight >= 0.8 * (high - low) && bodyBottom === high) {
+          return "Bearish Engulfing";
+        } else {
+          return "No pattern";
+        }
+      }
+    </script>
+  </body>
 </html>
